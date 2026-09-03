@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Daily Ledger — To-Do</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper: #F6F2E7;
+    --paper-dark: #EDE7D6;
+    --ink: #2B2A25;
+    --ink-soft: #57544A;
+    --rule: #B7CBD8;
+    --margin: #B14B45;
+    --done: #6E7F5C;
+    --done-bg: #E4E9DC;
+    --card-shadow: rgba(43, 42, 37, 0.18);
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100%;
+    background: #DDD3BC;
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(0,0,0,0.03), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0,0,0,0.03), transparent 40%);
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--ink);
+  }
+
+  .wrap{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+
+  .ledger{
+    position: relative;
+    background: var(--paper);
+    border-radius: 2px;
+    box-shadow: 0 18px 40px var(--card-shadow), 0 2px 0 rgba(0,0,0,0.04);
+    padding: 42px 32px 32px 60px;
+    overflow: hidden;
+  }
+
+  .ledger::before{
+    /* red margin line */
+    content:"";
+    position:absolute;
+    top:0; bottom:0; left:44px;
+    width:2px;
+    background: rgba(177,75,69,0.55);
+  }
+
+  .ledger::after{
+    /* punch holes */
+    content:"";
+    position:absolute;
+    top:0; bottom:0; left:20px;
+    width:6px;
+    background-image: radial-gradient(circle, var(--paper-dark) 3px, transparent 3.2px);
+    background-size: 6px 64px;
+    background-repeat: repeat-y;
+    background-position: 0 40px;
+    box-shadow: inset 0 0 0 1px rgba(43,42,37,0.06);
+  }
+
+  header{
+    margin-bottom: 28px;
+  }
+
+  .eyebrow-row{
+    display:flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+  }
+
+  h1{
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 30px;
+    margin: 6px 0 2px;
+    letter-spacing: -0.01em;
+  }
+
+  .sub{
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-family: 'Lora', serif;
+  }
+
+  /* Add row */
+  .add-row{
+    display:flex;
+    gap:10px;
+    margin: 26px 0 20px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 18px;
+  }
+
+  #taskInput{
+    flex:1;
+    border:none;
+    background:transparent;
+    border-bottom: 1px dashed rgba(43,42,37,0.35);
+    font-family:'Lora', serif;
+    font-size:16px;
+    padding: 6px 2px;
+    color: var(--ink);
+    outline:none;
+  }
+  #taskInput::placeholder{ color: rgba(43,42,37,0.4); font-style: italic; }
+  #taskInput:focus{ border-bottom-color: var(--margin); }
+
+  #addBtn{
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    padding: 0 16px;
+    cursor:pointer;
+    border-radius: 2px;
+    transition: transform .12s ease, background .12s ease;
+  }
+  #addBtn:hover{ background:#000; }
+  #addBtn:active{ transform: scale(0.96); }
+
+  /* Filters */
+  .filters{
+    display:flex;
+    gap: 18px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    color: var(--ink-soft);
+  }
+  .filters button{
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding: 2px 0;
+    border-bottom: 2px solid transparent;
+  }
+  .filters button.active{
+    color: var(--ink);
+    border-bottom-color: var(--margin);
+  }
+
+  /* List */
+  ul#list{
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+
+  .row{
+    display:flex;
+    align-items:flex-start;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+    animation: settle .25s ease;
+  }
+  .row:last-child{ border-bottom: none; }
+
+  @keyframes settle{
+    from{ opacity:0; transform: translateY(-4px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  .check{
+    flex:0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    border: 1.5px solid var(--ink-soft);
+    border-radius: 3px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: var(--paper);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .check svg{
+    width:12px; height:12px;
+    opacity:0;
+    transform: scale(0.6);
+    transition: opacity .12s ease, transform .12s ease;
+  }
+  .row.done .check{
+    background: var(--done-bg);
+    border-color: var(--done);
+  }
+  .row.done .check svg{ opacity:1; transform: scale(1); }
+
+  .task-text{
+    flex:1;
+    font-family:'Lora', serif;
+    font-size: 16px;
+    line-height:1.4;
+    color: var(--ink);
+    outline:none;
+    word-break: break-word;
+    padding-top: 1px;
+  }
+  .row.done .task-text{
+    color: var(--ink-soft);
+    text-decoration: line-through;
+    text-decoration-color: var(--done);
+    text-decoration-thickness: 1.5px;
+  }
+
+  .task-meta{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .stamp{
+    font-size: 10px;
+    color: var(--ink-soft);
+    opacity:0.7;
+    white-space:nowrap;
+  }
+  .del{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height:1;
+    padding: 2px 4px;
+    opacity: 0.5;
+    transition: opacity .12s ease, color .12s ease;
+  }
+  .del:hover{ opacity:1; color: var(--margin); }
+
+  .empty{
+    text-align:center;
+    padding: 40px 10px 20px;
+    color: var(--ink-soft);
+    font-family:'Lora', serif;
+    font-style: italic;
+    font-size: 15px;
+  }
+
+  footer.foot{
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  #clearBtn{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color: var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  #clearBtn:hover{ color: var(--margin); }
+
+  @media (max-width: 480px){
+    .wrap{ padding: 24px 12px 60px; }
+    .ledger{ padding: 32px 18px 24px 46px; }
+    .ledger::before{ left: 32px; }
+    .ledger::after{ left: 12px; }
+    h1{ font-size: 24px; }
+    #taskInput{ font-size:15px; }
+    .task-text{ font-size:15px; }
+    .add-row{ flex-direction: row; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .row{ animation:none; }
+    *{ transition:none !important; }
+  }
+
+  :focus-visible{
+    outline: 2px solid var(--margin);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="ledger">
+      <header>
+        <div class="eyebrow-row">
+          <span id="today"></span>
+          <span id="count">0 open</span>
+        </div>
+        <h1>The Daily Ledger</h1>
+        <p class="sub">Enter what needs doing. Strike it when it's done.</p>
+      </header>
+
+      <div class="add-row">
+        <input type="text" id="taskInput" placeholder="Write a new line…" maxlength="140" autocomplete="off">
+        <button id="addBtn">ADD</button>
+      </div>
+
+      <nav class="filters">
+        <button class="active" data-filter="all">All</button>
+        <button data-filter="active">Open</button>
+        <button data-filter="done">Done</button>
+      </nav>
+
+      <ul id="list"></ul>
+      <div class="empty" id="emptyState" style="display:none;">Nothing entered yet — the page is blank.</div>
+
+      <footer class="foot">
+        <span id="doneCount">0 completed</span>
+        <button id="clearBtn">Clear completed</button>
+      </footer>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'daily-ledger-tasks';
+  const listEl = document.getElementById('list');
+  const input = document.getElementById('taskInput');
+  const addBtn = document.getElementById('addBtn');
+  const emptyState = document.getElementById('emptyState');
+  const countEl = document.getElementById('count');
+  const doneCountEl = document.getElementById('doneCount');
+  const clearBtn = document.getElementById('clearBtn');
+  const filterBtns = document.querySelectorAll('.filters button');
+  const todayEl = document.getElementById('today');
+
+  let tasks = [];
+  let filter = 'all';
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      tasks = raw ? JSON.parse(raw) : [];
+    }catch(e){ tasks = []; }
+  }
+
+  function save(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }catch(e){}
+  }
+
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  function stampNow(){
+    const d = new Date();
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  }
+
+  function addTask(text){
+    text = text.trim();
+    if(!text) return;
+    tasks.unshift({ id: uid(), text, done:false, stamp: stampNow() });
+    save();
+    render();
+  }
+
+  function toggleTask(id){
+    const t = tasks.find(t => t.id === id);
+    if(t){ t.done = !t.done; save(); render(); }
+  }
+
+  function deleteTask(id){
+    tasks = tasks.filter(t => t.id !== id);
+    save();
+    render();
+  }
+
+  function editTask(id, newText){
+    const t = tasks.find(t => t.id === id);
+    if(!t) return;
+    newText = newText.trim();
+    if(newText){ t.text = newText; } 
+    else { deleteTask(id); return; }
+    save();
+    render();
+  }
+
+  function clearCompleted(){
+    tasks = tasks.filter(t => !t.done);
+    save();
+    render();
+  }
+
+  function checkSVG(){
+    return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  function render(){
+    let visible = tasks;
+    if(filter === 'active') visible = tasks.filter(t => !t.done);
+    if(filter === 'done') visible = tasks.filter(t => t.done);
+
+    listEl.innerHTML = '';
+
+    if(visible.length === 0){
+      emptyState.style.display = 'block';
+      emptyState.textContent = tasks.length === 0
+        ? 'Nothing entered yet — the page is blank.'
+        : (filter === 'done' ? 'No lines checked off yet.' : 'Nothing open. Well kept.');
+    } else {
+      emptyState.style.display = 'none';
+    }
+
+    visible.forEach(t => {
+      const li = document.createElement('li');
+      li.className = 'row' + (t.done ? ' done' : '');
+      li.dataset.id = t.id;
+
+      li.innerHTML = `
+        <div class="check" role="checkbox" aria-checked="${t.done}" tabindex="0" aria-label="Toggle task complete">${checkSVG()}</div>
+        <div class="task-text" contenteditable="true" spellcheck="false">${escapeHtml(t.text)}</div>
+        <div class="task-meta">
+          <span class="stamp">${t.stamp}</span>
+          <button class="del" aria-label="Delete task">✕</button>
+        </div>
+      `;
+
+      const checkEl = li.querySelector('.check');
+      const textEl = li.querySelector('.task-text');
+      const delEl = li.querySelector('.del');
+
+      checkEl.addEventListener('click', () => toggleTask(t.id));
+      checkEl.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleTask(t.id); }
+      });
+
+      textEl.addEventListener('blur', () => editTask(t.id, textEl.textContent));
+      textEl.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){ e.preventDefault(); textEl.blur(); }
+      });
+
+      delEl.addEventListener('click', () => deleteTask(t.id));
+
+      listEl.appendChild(li);
+    });
+
+    const openCount = tasks.filter(t => !t.done).length;
+    const doneCount = tasks.filter(t => t.done).length;
+    countEl.textContent = `${openCount} open`;
+    doneCountEl.textContent = `${doneCount} completed`;
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  addBtn.addEventListener('click', () => {
+    addTask(input.value);
+    input.value = '';
+    input.focus();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      addTask(input.value);
+      input.value = '';
+    }
+  });
+
+  clearBtn.addEventListener('click', clearCompleted);
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  todayEl.textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
